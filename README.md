@@ -35,7 +35,13 @@ Architecture
                     | (Microservices Application) |
                     +-----------------------------+
 
+Prerequisites
 
+Kubernetes (Minikube)
+kubectl
+Helm
+Docker
+Git
 
 Installation
 
@@ -49,15 +55,8 @@ cd otel-observability-lab
 
 ⸻
 
-Accessing the Platform
 
-After deployment:
-
-Component	URL
-Grafana	http://localhost:3000
-Jaeger	http://localhost:16686
-
-Port forwarding is provided by:
+Port forwarding will be provided by:
 
 ./scripts/port-forward.sh
 
