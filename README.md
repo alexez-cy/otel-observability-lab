@@ -63,42 +63,6 @@ Port forwarding is provided by:
 
 ⸻
 
-Telemetry Flow
-
-Metrics
-
-Application
-    │
-    ▼
-OpenTelemetry Collector
-    │
-    ▼
-Prometheus Remote Write
-    │
-    ▼
-VictoriaMetrics
-    │
-    ▼
-Grafana
-
-Traces
-
-Application
-    │
-    ▼
-OpenTelemetry Collector
-    │
-    ▼
-OTLP Exporter
-    │
-    ▼
-Jaeger
-    │
-    ▼
-Grafana
-
-⸻
-
 License
 
 This project is intended for educational and experimentation purposes.
