@@ -20,15 +20,29 @@ info() {
     echo "================================================="
 }
 
+
+########################################
+# Helm repositories
+########################################
+
+info "Adding Helm repositories"
+
+
+
+helm repo add open-telemetry https://open-telemetry.github.io/opentelemetry-helm-charts
+helm repo add grafana https://grafana.github.io/helm-charts
+helm repo add vm https://victoriametrics.github.io/helm-charts
+helm repo add jaegertracing https://jaegertracing.github.io/helm-charts
+helm repo add jetstack https://charts.jetstack.io
+helm repo update
+
+
 ########################################
 # cert-manager
 ########################################
 
 info "Installing cert-manager"
 
-helm repo add jetstack https://charts.jetstack.io
-
-helm repo update
 
 helm upgrade --install cert-manager \
     jetstack/cert-manager \
@@ -47,28 +61,6 @@ kubectl rollout status deployment/cert-manager-webhook \
 kubectl rollout status deployment/cert-manager-cainjector \
     -n cert-manager \
     --timeout=180s
-
-# ########################################
-# # Namespaces
-# ########################################
-
-# info "Creating namespaces"
-
-# kubectl apply -f manifests/namespaces.yaml
-
-########################################
-# Helm repositories
-########################################
-
-info "Adding Helm repositories"
-
-
-
-helm repo add open-telemetry https://open-telemetry.github.io/opentelemetry-helm-charts
-helm repo add grafana https://grafana.github.io/helm-charts
-helm repo add vm https://victoriametrics.github.io/helm-charts
-
-helm repo update
 
 ########################################
 # Operator
@@ -98,6 +90,24 @@ helm upgrade --install vm \
 
 kubectl rollout status \
     statefulset/vm-victoria-metrics-single-server \
+    -n "${OBS_NAMESPACE}" \
+    --timeout=180s
+
+########################################
+# Jaeger
+########################################
+
+info "Installing Jaeger"
+
+helm upgrade --install jaeger \
+    jaegertracing/jaeger \
+    --namespace "${OBS_NAMESPACE}" \
+    --create-namespace \
+
+kubectl wait \
+    --for=condition=Ready \
+    pod \
+    -l app.kubernetes.io/instance=jaeger \
     -n "${OBS_NAMESPACE}" \
     --timeout=180s
 
