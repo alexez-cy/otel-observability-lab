@@ -5,7 +5,8 @@ metadata:
   namespace: observability
 spec:
   mode: deployment
-  image: otel/opentelemetry-collector-contrib:0.130.0  
+  serviceAccount: collector
+  image: otel/opentelemetry-collector-contrib:0.130.0
 
   config:
     receivers:
@@ -19,6 +20,22 @@ spec:
         check_interval: 5s
         limit_percentage: 80
         spike_limit_percentage: 25
+
+      k8sattributes:
+        auth_type: serviceAccount
+
+        pod_association:
+          - sources:
+              - from: connection
+
+        extract:
+          metadata:
+            - k8s.namespace.name
+            - k8s.pod.name
+            - k8s.node.name
+            - k8s.deployment.name
+            - k8s.container.name
+            - k8s.replicaset.name
 
       batch: {}
 
@@ -35,18 +52,22 @@ spec:
           insecure: true
 
     service:
+      telemetry:
+        logs:
+          level: debug
+
       pipelines:
         metrics:
           receivers: [otlp]
-          processors: [memory_limiter, batch]
+          processors: [memory_limiter, batch, k8sattributes]
           exporters: [prometheusremotewrite, debug]
 
         traces:
           receivers: [otlp]
-          processors: [memory_limiter, batch]
+          processors: [memory_limiter, batch, k8sattributes]
           exporters: [otlp/jaeger, debug]
 
         logs:
           receivers: [otlp]
-          processors: [memory_limiter, batch]
+          processors: [memory_limiter, batch, k8sattributes]
           exporters: [debug]

@@ -126,13 +126,20 @@ kubectl rollout status deployment/grafana \
     --timeout=180s
 
 ########################################
+# OpenTelemetry Collector RBAC
+########################################
+
+info "Installing Collector RBAC"
+
+kubectl apply -f manifests/collector-rbac.yaml
+
+########################################
 # OpenTelemetry Collector
 ########################################
 
 info "Installing OpenTelemetry Collector"
 
 kubectl apply -f manifests/collector.yaml
-
 
 ########################################
 # OpenTelemetry Demo
