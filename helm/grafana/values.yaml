@@ -15,6 +15,231 @@ datasources:
         access: proxy
         url: http://jaeger:16686
 
+alerting:
+  rules.yaml:
+    apiVersion: 1
+    groups:
+      - orgId: 1
+        name: observability-alerts
+        folder: Observability
+        interval: 1m
+        rules:
+          - uid: high-http-error-rate
+            title: High HTTP Error Rate
+            condition: B
+            data:
+              - refId: A
+                relativeTimeRange:
+                  from: 300
+                  to: 0
+                datasourceUid: victoriametrics
+                model:
+                  expr: |
+                    100 *
+                    sum(rate(http_server_request_duration_seconds_count{
+                      http_response_status_code=~"5.."
+                    }[5m]))
+                    /
+                    clamp_min(
+                      sum(rate(http_server_request_duration_seconds_count[5m])),
+                      1e-9
+                    )
+                  instant: true
+                  refId: A
+              - refId: B
+                datasourceUid: "-100"
+                model:
+                  expression: A
+                  type: threshold
+                  conditions:
+                    - evaluator:
+                        params: [5]
+                        type: gt
+                      operator:
+                        type: and
+                      query:
+                        params: [A]
+                      reducer:
+                        type: last
+                      type: query
+                  refId: B
+            for: 5m
+            noDataState: NoData
+            execErrState: Alerting
+            labels:
+              severity: warning
+            annotations:
+              summary: High HTTP error rate
+              description: HTTP 5xx error rate has exceeded 5% for 5 minutes.
+
+          - uid: high-http-p95-latency
+            title: High HTTP P95 Latency
+            condition: B
+            data:
+              - refId: A
+                relativeTimeRange:
+                  from: 300
+                  to: 0
+                datasourceUid: victoriametrics
+                model:
+                  expr: |
+                    histogram_quantile(
+                      0.95,
+                      sum by (le) (
+                        rate(http_server_request_duration_seconds_bucket[5m])
+                      )
+                    )
+                  instant: true
+                  refId: A
+              - refId: B
+                datasourceUid: "-100"
+                model:
+                  expression: A
+                  type: threshold
+                  conditions:
+                    - evaluator:
+                        params: [1]
+                        type: gt
+                      operator:
+                        type: and
+                      query:
+                        params: [A]
+                      reducer:
+                        type: last
+                      type: query
+                  refId: B
+            for: 5m
+            noDataState: NoData
+            execErrState: Alerting
+            labels:
+              severity: warning
+            annotations:
+              summary: High HTTP p95 latency
+              description: HTTP p95 latency has exceeded 1 second for 5 minutes.
+
+          - uid: high-database-latency
+            title: High Database Latency
+            condition: B
+            data:
+              - refId: A
+                relativeTimeRange:
+                  from: 300
+                  to: 0
+                datasourceUid: victoriametrics
+                model:
+                  expr: |
+                    histogram_quantile(
+                      0.95,
+                      sum by (le) (
+                        rate(db_client_operation_duration_seconds_bucket[5m])
+                      )
+                    )
+                  instant: true
+                  refId: A
+              - refId: B
+                datasourceUid: "-100"
+                model:
+                  expression: A
+                  type: threshold
+                  conditions:
+                    - evaluator:
+                        params: [1]
+                        type: gt
+                      operator:
+                        type: and
+                      query:
+                        params: [A]
+                      reducer:
+                        type: last
+                      type: query
+                  refId: B
+            for: 5m
+            noDataState: NoData
+            execErrState: Alerting
+            labels:
+              severity: warning
+            annotations:
+              summary: High database latency
+              description: Database operation p95 latency has exceeded 1 second.
+
+          - uid: kafka-consumer-lag
+            title: High Kafka Consumer Lag
+            condition: B
+            data:
+              - refId: A
+                relativeTimeRange:
+                  from: 300
+                  to: 0
+                datasourceUid: victoriametrics
+                model:
+                  expr: max(kafka_consumer_records_lag_max)
+                  instant: true
+                  refId: A
+              - refId: B
+                datasourceUid: "-100"
+                model:
+                  expression: A
+                  type: threshold
+                  conditions:
+                    - evaluator:
+                        params: [1000]
+                        type: gt
+                      operator:
+                        type: and
+                      query:
+                        params: [A]
+                      reducer:
+                        type: last
+                      type: query
+                  refId: B
+            for: 5m
+            noDataState: NoData
+            execErrState: Alerting
+            labels:
+              severity: warning
+            annotations:
+              summary: High Kafka consumer lag
+              description: Kafka consumer lag has exceeded 1000 records.
+
+          - uid: kafka-under-replicated
+            title: Kafka Under-Replicated Partitions
+            condition: B
+            data:
+              - refId: A
+                relativeTimeRange:
+                  from: 300
+                  to: 0
+                datasourceUid: victoriametrics
+                model:
+                  expr: sum(kafka_partition_underReplicated)
+                  instant: true
+                  refId: A
+              - refId: B
+                datasourceUid: "-100"
+                model:
+                  expression: A
+                  type: threshold
+                  conditions:
+                    - evaluator:
+                        params: [0]
+                        type: gt
+                      operator:
+                        type: and
+                      query:
+                        params: [A]
+                      reducer:
+                        type: last
+                      type: query
+                  refId: B
+            for: 5m
+            noDataState: NoData
+            execErrState: Alerting
+            labels:
+              severity: critical
+            annotations:
+              summary: Kafka has under-replicated partitions
+              description: One or more Kafka partitions have been under-replicated for 5 minutes.
+
 sidecar:
   dashboards:
     enabled: true
