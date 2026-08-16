@@ -105,10 +105,7 @@ helm upgrade --install jaeger \
     --namespace "${OBS_NAMESPACE}" \
     --create-namespace
 
-kubectl wait \
-    --for=condition=Ready \
-    pod \
-    -l app.kubernetes.io/instance=jaeger \
+kubectl rollout status deployment/jaeger \
     -n "${OBS_NAMESPACE}" \
     --timeout=180s
 

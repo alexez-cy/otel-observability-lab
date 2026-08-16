@@ -12,6 +12,8 @@ helm uninstall jaeger -n observability || true
 
 helm uninstall opentelemetry-operator -n observability || true
 
+helm uninstall cert-manager -n cert-manager || true
+
 helm repo remove vm || true
 
 helm repo remove grafana || true
