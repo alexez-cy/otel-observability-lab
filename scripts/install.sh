@@ -70,7 +70,8 @@ info "Installing OpenTelemetry Operator"
 
 helm upgrade --install opentelemetry-operator \
     open-telemetry/opentelemetry-operator \
-    --namespace "${OBS_NAMESPACE}"
+    --namespace "${OBS_NAMESPACE}" \
+    --create-namespace 
 
 kubectl rollout status deployment/opentelemetry-operator \
     -n "${OBS_NAMESPACE}" \
@@ -102,7 +103,7 @@ info "Installing Jaeger"
 helm upgrade --install jaeger \
     jaegertracing/jaeger \
     --namespace "${OBS_NAMESPACE}" \
-    --create-namespace \
+    --create-namespace
 
 kubectl wait \
     --for=condition=Ready \
@@ -120,6 +121,7 @@ info "Installing Grafana"
 helm upgrade --install grafana \
     grafana/grafana \
     --namespace "${OBS_NAMESPACE}" \
+    --create-namespace
 
 kubectl rollout status deployment/grafana \
     -n "${OBS_NAMESPACE}" \

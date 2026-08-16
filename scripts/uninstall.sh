@@ -22,4 +22,8 @@ helm repo remove jetstack || true
 
 kubectl delete -f manifests/collector.yaml --ignore-not-found=true
 
+kubectl delete ns observability
+
+kubectl delete ns otel-demo
+
 
