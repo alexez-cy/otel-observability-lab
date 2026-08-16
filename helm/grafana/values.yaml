@@ -14,3 +14,13 @@ datasources:
         type: jaeger
         access: proxy
         url: http://jaeger:16686
+
+sidecar:
+  dashboards:
+    enabled: true
+    label: grafana_dashboard
+    labelValue: "1"
+    searchNamespace: observability
+    folderAnnotation: grafana_folder
+    provider:
+      foldersFromFilesStructure: true

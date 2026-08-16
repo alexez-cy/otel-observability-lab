@@ -113,12 +113,24 @@ kubectl rollout status deployment/jaeger \
 
 info "Installing Grafana"
 
+kubectl create configmap grafana-dashboards \
+    --namespace "${OBS_NAMESPACE}" \
+    --from-file=dashboards/ \
+    --dry-run=client -o yaml |
+    kubectl apply -f -
+
+kubectl label configmap grafana-dashboards \
+    -n "${OBS_NAMESPACE}" \
+    grafana_dashboard=1 \
+    --overwrite
+
 helm upgrade --install grafana \
     grafana/grafana \
     --namespace "${OBS_NAMESPACE}" \
     --create-namespace \
     --hide-notes \
-    -f helm/grafana/values.yaml    
+    --version 10.5.15 \
+    -f helm/grafana/values.yaml
 
 kubectl rollout status deployment/grafana \
     -n "${OBS_NAMESPACE}" \
@@ -131,7 +143,7 @@ GRAFANA_PASSWORD=$(kubectl get secret \
 
 info "Grafana credentials"
 echo "Username: admin"
-echo "Password: ${GRAFANA_PASSWORD}"        
+echo "Password: ${GRAFANA_PASSWORD}"
 
 ########################################
 # OpenTelemetry Collector RBAC
