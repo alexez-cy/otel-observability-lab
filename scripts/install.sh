@@ -16,6 +16,7 @@ DEMO_NAMESPACE="otel-demo"
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd -- "${SCRIPT_DIR}/.." && pwd)"
 
+# shellcheck disable=SC1091
 source "${PROJECT_ROOT}/config/versions.env"
 
 ########################################

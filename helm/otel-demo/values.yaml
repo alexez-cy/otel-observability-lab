@@ -1,3 +1,4 @@
+---
 default:
   env:
     - name: OTEL_COLLECTOR_NAME
