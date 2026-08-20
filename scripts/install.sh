@@ -9,6 +9,13 @@ set -Eeuo pipefail
 OBS_NAMESPACE="observability"
 DEMO_NAMESPACE="otel-demo"
 
+CERT_MANAGER_VERSION="v1.21.1"
+OTEL_OPERATOR_VERSION="0.121.0"
+VICTORIA_METRICS_VERSION="0.45.0"
+JAEGER_VERSION="4.12.0"
+GRAFANA_VERSION="10.5.15"
+OTEL_DEMO_VERSION="0.41.0"
+
 ########################################
 # Helper functions
 ########################################
@@ -29,7 +36,6 @@ helm repo add grafana https://grafana.github.io/helm-charts
 helm repo add vm https://victoriametrics.github.io/helm-charts
 helm repo add jaegertracing https://jaegertracing.github.io/helm-charts
 helm repo add jetstack https://charts.jetstack.io
-helm repo add open-telemetry https://open-telemetry.github.io/opentelemetry-helm-charts
 helm repo update
 
 ########################################
@@ -42,6 +48,7 @@ helm upgrade --install cert-manager \
     jetstack/cert-manager \
     --namespace cert-manager \
     --create-namespace \
+    --version "${CERT_MANAGER_VERSION}" \
     --set crds.enabled=true
 
 kubectl rollout status deployment/cert-manager \
@@ -67,6 +74,7 @@ helm upgrade --install opentelemetry-operator \
     --namespace "${OBS_NAMESPACE}" \
     --create-namespace \
     --hide-notes \
+    --version "${OTEL_OPERATOR_VERSION}" \
     -f helm/opentelemetry-operator/values.yaml    
 
 kubectl rollout status deployment/opentelemetry-operator \
@@ -84,6 +92,7 @@ helm upgrade --install vm \
     --namespace "${OBS_NAMESPACE}" \
     --create-namespace \
     --hide-notes \
+    --version "${VICTORIA_METRICS_VERSION}" \
     -f helm/victoria-metrics/values.yaml
 
 kubectl rollout status \
@@ -101,7 +110,8 @@ helm upgrade --install jaeger \
     jaegertracing/jaeger \
     --namespace "${OBS_NAMESPACE}" \
     --create-namespace \
-    --hide-notes   
+    --hide-notes \
+    --version "${JAEGER_VERSION}"
 
 kubectl rollout status deployment/jaeger \
     -n "${OBS_NAMESPACE}" \
@@ -129,7 +139,7 @@ helm upgrade --install grafana \
     --namespace "${OBS_NAMESPACE}" \
     --create-namespace \
     --hide-notes \
-    --version 10.5.15 \
+    --version "${GRAFANA_VERSION}" \
     -f helm/grafana/values.yaml
 
 kubectl rollout status deployment/grafana \
@@ -172,6 +182,7 @@ helm upgrade --install otel-demo \
     --namespace "${DEMO_NAMESPACE}" \
     --create-namespace \
     --hide-notes \
+    --version "${OTEL_DEMO_VERSION}" \
     -f helm/otel-demo/values.yaml
 
 kubectl wait \
@@ -186,4 +197,3 @@ kubectl wait \
 ########################################
 
 echo "Installation completed successfully!"
-

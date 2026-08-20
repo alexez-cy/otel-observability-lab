@@ -1,220 +1,169 @@
 # OpenTelemetry Observability Lab
 
-A hands-on Kubernetes observability platform built around OpenTelemetry. The [OpenTelemetry Demo](https://github.com/open-telemetry/opentelemetry-demo) supplies application telemetry; this repository owns the collection, storage, querying, visualisation, and alert-rule layers around it.
+A reproducible Kubernetes observability platform built with OpenTelemetry, VictoriaMetrics, Jaeger, and Grafana.
 
-It is intended for learning, experimentation, and portfolio work. It is not a production-ready reference deployment.
+The [OpenTelemetry Demo](https://github.com/open-telemetry/opentelemetry-demo) is used as the telemetry source. The focus of this project is the observability platform around the application: collecting, processing, storing, querying, and visualizing telemetry.
 
 ## Architecture
 
 ```text
-                         OTLP (gRPC / HTTP)
-OpenTelemetry Demo  ---------------------------->  OpenTelemetry Collector
-                                                           |
-                                             +-------------+-------------+
-                                             |                           |
-                                     Prometheus remote write          OTLP
-                                             |                           |
-                                             v                           v
-                                    VictoriaMetrics                  Jaeger
-                                             |                           |
-                                             +-------------+-------------+
-                                                           |
-                                                           v
-                                                        Grafana
-                                                dashboards + alert rules
+                 OpenTelemetry Demo
+                  Microservices App
+                         |
+                         | OTLP
+                         v
+              +-----------------------+
+              | OpenTelemetry         |
+              | Collector             |
+              |                       |
+              | - OTLP receiver       |
+              | - memory limiter      |
+              | - batch processing    |
+              +-----------+-----------+
+                          |
+                 +--------+--------+
+                 |                 |
+              metrics            traces
+                 |                 |
+                 v                 v
+        +----------------+   +-------------+
+        | VictoriaMetrics|   |    Jaeger   |
+        +-------+--------+   +------+------+ 
+                |                   |
+                +--------+----------+
+                         |
+                         v
+                    +---------+
+                    | Grafana |
+                    +---------+
 ```
 
-| Component | Purpose |
-| --- | --- |
-| OpenTelemetry Operator | Reconciles the `OpenTelemetryCollector` custom resource. |
-| OpenTelemetry Collector | Receives OTLP, enriches it with Kubernetes metadata, batches it, and exports it. |
-| VictoriaMetrics | Stores metrics and exposes a Prometheus-compatible query API. |
-| Jaeger | Stores and displays distributed traces. |
-| Grafana | Provides datasources, dashboards, and Grafana-managed alert rules. |
-| OpenTelemetry Demo | Generates application, PostgreSQL, Kafka, and runtime telemetry. |
+## Components
 
-Logs are accepted by the Collector and sent to its `debug` exporter only; this lab has no persistent log backend.
+### OpenTelemetry Operator
 
-## Repository layout
+Manages the OpenTelemetry Collector deployment using a Kubernetes `OpenTelemetryCollector` resource.
 
-```text
-helm/
-  grafana/                   Datasources, alert rules, dashboard sidecar
-  opentelemetry-operator/    Operator resource limits
-  otel-demo/                 Demo endpoint configuration
-  victoria-metrics/          VictoriaMetrics settings
-manifests/
-  collector.yaml             Collector and telemetry pipelines
-  collector-rbac.yaml        Service account and Kubernetes metadata permissions
-dashboards/                  Grafana dashboard JSON files
-scripts/
-  install.sh                 End-to-end installation
-  port-forward.sh            Local access to all UIs
-  uninstall.sh               Teardown
-```
+### OpenTelemetry Collector
+
+The Collector is the central telemetry pipeline.
+
+It receives OTLP telemetry over:
+
+- gRPC — `4317`
+- HTTP — `4318`
+
+The pipeline uses:
+
+- memory limiting to protect the Collector from excessive resource usage
+- batching to improve telemetry processing efficiency
+
+Metrics are exported to VictoriaMetrics using Prometheus Remote Write.
+
+Traces are exported to Jaeger using OTLP.
+
+### VictoriaMetrics
+
+VictoriaMetrics stores metrics received from the OpenTelemetry Collector and provides a Prometheus-compatible query interface for Grafana.
+
+### Jaeger
+
+Jaeger stores and visualizes distributed traces received from the OpenTelemetry Collector.
+
+### Grafana
+
+Grafana provides the visualization layer and is automatically provisioned with:
+
+- VictoriaMetrics datasource
+- Jaeger datasource
+- Observability dashboards
+
+The PostgreSQL, Kafka, and application workloads are provided by the OpenTelemetry Demo. They are used as realistic telemetry sources for testing and demonstrating the observability platform.
+
 
 ## Prerequisites
 
-- A working Kubernetes cluster (Minikube, kind, or another local cluster)
-- `kubectl` configured for that cluster
-- Helm 3
+- Kubernetes / Minikube
+- kubectl
+- Helm
+- Docker
 - Git
 
-Docker is required only when your local Kubernetes distribution requires it. The installer creates namespaces, CRDs, cluster-scoped RBAC, and Helm releases.
+## Installation
 
-## Quick start
+Clone the repository:
 
 ```bash
 git clone https://github.com/alexez-cy/otel-observability-lab.git
 cd otel-observability-lab
-bash scripts/install.sh
 ```
 
-The installer adds the required Helm repositories and installs:
+Run the installation script:
+
+```bash
+./scripts/install.sh
+```
+
+The script installs and configures:
 
 1. cert-manager
 2. OpenTelemetry Operator
 3. VictoriaMetrics
 4. Jaeger
-5. Grafana and its dashboard ConfigMap
-6. Collector RBAC and the Collector custom resource
+5. Grafana
+6. OpenTelemetry Collector
 7. OpenTelemetry Demo
 
-The Grafana Helm chart is pinned to `10.5.15`, which packages Grafana OSS `12.3.1`. The other charts are resolved from their configured Helm repositories at install time.
+The script also waits for the main workloads to become ready.
 
 ## Access
 
-Run the forwarding helper in a dedicated terminal:
+Use the port-forwarding script to access the services locally:
 
 ```bash
-bash scripts/port-forward.sh
+./scripts/port-forward.sh
 ```
 
-| Service | URL |
-| --- | --- |
-| Grafana | <http://localhost:3000> |
-| Jaeger | <http://localhost:16686> |
-| VictoriaMetrics | <http://localhost:8428> |
-| OpenTelemetry Demo | <http://localhost:8081> |
+### Grafana credentials
 
-Retrieve the Grafana administrator password:
+The Grafana admin password is stored in a Kubernetes Secret.
+
+Retrieve it with:
 
 ```bash
 kubectl get secret -n observability grafana \
-  -o jsonpath='{.data.admin-password}' | base64 --decode
+  -o jsonpath="{.data.admin-password}" | base64 --decode
 echo
 ```
 
-Sign in as `admin`.
+## Design Goals
 
-## Verify the deployment
+This project demonstrates practical platform and observability engineering concepts:
 
-```bash
-kubectl get pods -n observability
-kubectl get pods -n otel-demo
-kubectl get opentelemetrycollector -n observability
-kubectl logs -n observability deployment/collector-collector --tail=100
-```
+- Reproducible Kubernetes deployments
+- Declarative configuration with Helm
+- OpenTelemetry Collector pipeline design
+- OTLP ingestion over gRPC and HTTP
+- Telemetry batching and resource protection
+- Prometheus Remote Write
+- Metrics storage with VictoriaMetrics
+- Distributed tracing with Jaeger
+- Automated Grafana datasource provisioning
+- Automated Grafana dashboard provisioning
+- Observability of distributed applications
 
-Open the demo UI and generate traffic, then check:
+## Future Improvements
 
-- Grafana dashboards in **Dashboards**
-- Grafana-managed rules in **Alerting → Alert rules**
-- Jaeger traces in **Search**
-- VictoriaMetrics query results at <http://localhost:8428/vmui/>
+Possible extensions include:
 
-Metric names are produced by the deployed OpenTelemetry Demo version. If that chart is upgraded, validate the dashboard and alert PromQL expressions in VictoriaMetrics before relying on them.
-
-## Telemetry pipeline
-
-The Collector is declared in [manifests/collector.yaml](manifests/collector.yaml). It accepts OTLP on:
-
-- gRPC: `4317`
-- HTTP: `4318`
-
-Each metrics, traces, and logs pipeline uses:
-
-1. `memory_limiter` to protect the Collector process
-2. `batch` to reduce export overhead
-3. `k8sattributes` to associate telemetry with Kubernetes resources
-
-Metrics go to VictoriaMetrics through Prometheus Remote Write. Traces go to Jaeger over OTLP. The Collector's service account has read-only, cluster-scoped permissions required by `k8sattributes`; see [manifests/collector-rbac.yaml](manifests/collector-rbac.yaml).
-
-## Dashboards
-
-The dashboard sidecar watches ConfigMaps labeled `grafana_dashboard=1`. During installation, `scripts/install.sh` creates that ConfigMap from every JSON file in [dashboards](dashboards/).
-
-The supplied dashboards cover:
-
-- Service RED signals: request rate, errors, and latency
-- PostgreSQL/database activity
-- Kafka throughput, lag, latency, and partition health
-- Process and runtime system metrics
-
-Grafana is provisioned with stable datasource UIDs:
-
-| Datasource | UID |
-| --- | --- |
-| VictoriaMetrics | `victoriametrics` |
-| Jaeger | `jaeger` |
-
-## Declarative Grafana Alerting
-
-Alert rules are provisioned by the Grafana Helm chart from the `alerting:` section of [helm/grafana/values.yaml](helm/grafana/values.yaml). The chart renders `rules.yaml` into Grafana's provisioning directory and restarts the deployment when that configuration changes. No alerting sidecar or additional controller is used.
-
-The `observability-alerts` rule group evaluates every minute and includes:
-
-- high HTTP 5xx rate
-- high HTTP p95 latency
-- high database p95 latency
-- high Kafka consumer lag
-- Kafka under-replicated partitions
-
-Rules use `NoData` when no series are returned and enter `Alerting` when the query fails. They are Grafana-managed rules, so change the Helm values and upgrade Grafana instead of editing them in the UI.
-
-This repository provisions rules only. It does **not** provision a contact point or notification policy, so configure a contact point in Grafana before expecting Slack, email, PagerDuty, or webhook notifications.
-
-After changing a dashboard, recreate the watched ConfigMap:
-
-```bash
-kubectl create configmap grafana-dashboards \
-  --namespace observability \
-  --from-file=dashboards/ \
-  --dry-run=client -o yaml | kubectl apply -f -
-kubectl label configmap grafana-dashboards \
-  --namespace observability \
-  grafana_dashboard=1 --overwrite
-```
-
-After changing an alert rule, upgrade Grafana:
-
-```bash
-helm upgrade --install grafana grafana/grafana \
-  --namespace observability \
-  --version 10.5.15 \
-  -f helm/grafana/values.yaml
-```
-
-## Teardown
-
-```bash
-bash scripts/uninstall.sh
-```
-
-Review the script before running it on a shared cluster. The Collector RBAC uses cluster-scoped resources and should be removed manually if teardown is interrupted.
-
-## Scope and next steps
-
-Useful extensions for a more production-like deployment include:
-
-- pinning every Helm chart version and adding CI manifest validation
-- persistent storage and backups for VictoriaMetrics, Jaeger, and Grafana
-- Collector resource requests/limits and high availability
-- TLS, authentication, and network policies between components
-- a log backend such as Loki
-- Kubernetes/node metrics and recording rules
-- declarative contact points and notification policies, with secrets kept out of Git
+- Kubernetes node and workload metrics
+- Alerting and recording rules
+- Grafana alerting
+- Persistent storage configuration
+- TLS between observability components
+- CI validation of Helm and Kubernetes manifests
+- Collector high-availability deployment
 
 ## License
 
-This project is provided for educational, experimentation, and portfolio purposes.
+This project is intended for educational, experimentation, and portfolio purposes.

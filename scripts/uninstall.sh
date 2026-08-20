@@ -2,6 +2,11 @@
 
 set -Eeuo pipefail
 
+# Remove the Collector and its cluster-scoped RBAC before uninstalling the
+# operator that owns the OpenTelemetryCollector CRD.
+kubectl delete -f manifests/collector.yaml --ignore-not-found=true
+kubectl delete -f manifests/collector-rbac.yaml --ignore-not-found=true
+
 helm uninstall otel-demo -n otel-demo || true
 
 helm uninstall grafana -n observability || true
@@ -22,10 +27,9 @@ helm repo remove open-telemetry || true
 
 helm repo remove jetstack || true
 
-kubectl delete -f manifests/collector.yaml --ignore-not-found=true
+helm repo remove jaegertracing || true
 
-kubectl delete ns observability
+kubectl delete namespace observability --ignore-not-found=true
 
-kubectl delete ns otel-demo
-
+kubectl delete namespace otel-demo --ignore-not-found=true
 
