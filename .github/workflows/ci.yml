@@ -48,26 +48,55 @@ jobs:
           helm repo update
 
       - name: Helm lint
+        shell: bash
         run: |
-          helm lint jetstack/cert-manager \
+          set -Eeuo pipefail
+
+          mkdir -p /tmp/helm-charts
+
+          helm pull jetstack/cert-manager \
             --version "${CERT_MANAGER_VERSION}" \
+            --untar \
+            --untardir /tmp/helm-charts
+
+          helm lint /tmp/helm-charts/cert-manager \
             --set crds.enabled=true
 
-          helm lint open-telemetry/opentelemetry-operator \
+          helm pull open-telemetry/opentelemetry-operator \
             --version "${OTEL_OPERATOR_VERSION}" \
+            --untar \
+            --untardir /tmp/helm-charts
+
+          helm lint /tmp/helm-charts/opentelemetry-operator \
             -f helm/opentelemetry-operator/values.yaml
 
-          helm lint vm/victoria-metrics-single \
+          helm pull vm/victoria-metrics-single \
             --version "${VICTORIA_METRICS_VERSION}" \
+            --untar \
+            --untardir /tmp/helm-charts
+
+          helm lint /tmp/helm-charts/victoria-metrics-single \
             -f helm/victoria-metrics/values.yaml
 
-          helm lint jaegertracing/jaeger \
-            --version "${JAEGER_VERSION}"
+          helm pull jaegertracing/jaeger \
+            --version "${JAEGER_VERSION}" \
+            --untar \
+            --untardir /tmp/helm-charts
 
-          helm lint grafana/grafana \
+          helm lint /tmp/helm-charts/jaeger
+
+          helm pull grafana/grafana \
             --version "${GRAFANA_VERSION}" \
+            --untar \
+            --untardir /tmp/helm-charts
+
+          helm lint /tmp/helm-charts/grafana \
             -f helm/grafana/values.yaml
 
-          helm lint open-telemetry/opentelemetry-demo \
+          helm pull open-telemetry/opentelemetry-demo \
             --version "${OTEL_DEMO_VERSION}" \
-            -f helm/otel-demo/values.yaml
+            --untar \
+            --untardir /tmp/helm-charts
+
+          helm lint /tmp/helm-charts/opentelemetry-demo \
+            -f helm/otel-demo/values.yaml 
