@@ -1,6 +1,12 @@
 ---
 default:
   env:
+    - name: OTEL_SERVICE_NAME
+      valueFrom:
+        fieldRef:
+          apiVersion: v1
+          fieldPath: "metadata.labels['app.kubernetes.io/component']"
+
     - name: OTEL_COLLECTOR_NAME
       value: collector-collector.observability.svc.cluster.local
 
