@@ -9,12 +9,14 @@ set -Eeuo pipefail
 OBS_NAMESPACE="observability"
 DEMO_NAMESPACE="otel-demo"
 
-CERT_MANAGER_VERSION="v1.21.1"
-OTEL_OPERATOR_VERSION="0.121.0"
-VICTORIA_METRICS_VERSION="0.45.0"
-JAEGER_VERSION="4.12.0"
-GRAFANA_VERSION="10.5.15"
-OTEL_DEMO_VERSION="0.41.0"
+########################################
+# Project paths and versions
+########################################
+
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd -- "${SCRIPT_DIR}/.." && pwd)"
+
+source "${PROJECT_ROOT}/config/versions.env"
 
 ########################################
 # Helper functions
@@ -64,7 +66,7 @@ kubectl rollout status deployment/cert-manager-cainjector \
     --timeout=180s
 
 ########################################
-# Operator
+# OpenTelemetry Operator
 ########################################
 
 info "Installing OpenTelemetry Operator"
@@ -75,7 +77,7 @@ helm upgrade --install opentelemetry-operator \
     --create-namespace \
     --hide-notes \
     --version "${OTEL_OPERATOR_VERSION}" \
-    -f helm/opentelemetry-operator/values.yaml    
+    -f helm/opentelemetry-operator/values.yaml
 
 kubectl rollout status deployment/opentelemetry-operator \
     -n "${OBS_NAMESPACE}" \
@@ -125,7 +127,7 @@ info "Installing Grafana"
 
 kubectl create configmap grafana-dashboards \
     --namespace "${OBS_NAMESPACE}" \
-    --from-file=dashboards/ \
+    --from-file="${PROJECT_ROOT}/dashboards/" \
     --dry-run=client -o yaml |
     kubectl apply -f -
 
@@ -140,7 +142,7 @@ helm upgrade --install grafana \
     --create-namespace \
     --hide-notes \
     --version "${GRAFANA_VERSION}" \
-    -f helm/grafana/values.yaml
+    -f "${PROJECT_ROOT}/helm/grafana/values.yaml"
 
 kubectl rollout status deployment/grafana \
     -n "${OBS_NAMESPACE}" \
@@ -161,7 +163,7 @@ echo "Password: ${GRAFANA_PASSWORD}"
 
 info "Installing Collector RBAC"
 
-kubectl apply -f manifests/collector-rbac.yaml
+kubectl apply -f "${PROJECT_ROOT}/manifests/collector-rbac.yaml"
 
 ########################################
 # OpenTelemetry Collector
@@ -169,7 +171,7 @@ kubectl apply -f manifests/collector-rbac.yaml
 
 info "Installing OpenTelemetry Collector"
 
-kubectl apply -f manifests/collector.yaml
+kubectl apply -f "${PROJECT_ROOT}/manifests/collector.yaml"
 
 ########################################
 # OpenTelemetry Demo
@@ -183,7 +185,7 @@ helm upgrade --install otel-demo \
     --create-namespace \
     --hide-notes \
     --version "${OTEL_DEMO_VERSION}" \
-    -f helm/otel-demo/values.yaml
+    -f "${PROJECT_ROOT}/helm/otel-demo/values.yaml"
 
 kubectl wait \
     --for=condition=Ready \
@@ -196,4 +198,5 @@ kubectl wait \
 # Finished
 ########################################
 
+echo
 echo "Installation completed successfully!"
