@@ -36,9 +36,12 @@ alerting:
                 model:
                   expr: |
                     100 *
-                    sum(rate(http_server_request_duration_seconds_count{
-                      http_response_status_code=~"5.."
-                    }[5m]))
+                    (
+                      sum(rate(http_server_request_duration_seconds_count{
+                        http_response_status_code=~"5.."
+                      }[5m]))
+                      or vector(0)
+                    )
                     /
                     clamp_min(
                       sum(rate(http_server_request_duration_seconds_count[5m])),
@@ -46,6 +49,7 @@ alerting:
                     )
                   instant: true
                   refId: A
+
               - refId: B
                 datasourceUid: "-100"
                 model:
@@ -63,8 +67,9 @@ alerting:
                         type: last
                       type: query
                   refId: B
+
             for: 5m
-            noDataState: NoData
+            noDataState: OK
             execErrState: Alerting
             labels:
               severity: warning
@@ -91,6 +96,7 @@ alerting:
                     )
                   instant: true
                   refId: A
+
               - refId: B
                 datasourceUid: "-100"
                 model:
@@ -108,6 +114,7 @@ alerting:
                         type: last
                       type: query
                   refId: B
+
             for: 5m
             noDataState: NoData
             execErrState: Alerting
@@ -136,6 +143,7 @@ alerting:
                     )
                   instant: true
                   refId: A
+
               - refId: B
                 datasourceUid: "-100"
                 model:
@@ -153,6 +161,7 @@ alerting:
                         type: last
                       type: query
                   refId: B
+
             for: 5m
             noDataState: NoData
             execErrState: Alerting
@@ -175,6 +184,7 @@ alerting:
                   expr: max(kafka_consumer_records_lag_max)
                   instant: true
                   refId: A
+
               - refId: B
                 datasourceUid: "-100"
                 model:
@@ -192,6 +202,7 @@ alerting:
                         type: last
                       type: query
                   refId: B
+
             for: 5m
             noDataState: NoData
             execErrState: Alerting
@@ -214,6 +225,7 @@ alerting:
                   expr: sum(kafka_partition_underReplicated)
                   instant: true
                   refId: A
+
               - refId: B
                 datasourceUid: "-100"
                 model:
@@ -231,6 +243,7 @@ alerting:
                         type: last
                       type: query
                   refId: B
+
             for: 5m
             noDataState: NoData
             execErrState: Alerting
@@ -238,7 +251,7 @@ alerting:
               severity: critical
             annotations:
               summary: Kafka has under-replicated partitions
-              description: One or more Kafka partitions have been under-replicated for 5 minutes
+              description: One or more Kafka partitions have been under-replicated for 5 minutes.
 
 sidecar:
   dashboards:
