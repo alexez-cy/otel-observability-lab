@@ -1,0 +1,73 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  validate:
+    name: Validate
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install validation tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y shellcheck yamllint
+          curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+
+      - name: Load versions
+        run: cat config/versions.env >> "$GITHUB_ENV"
+
+      - name: ShellCheck
+        run: shellcheck scripts/*.sh
+
+      - name: YAML lint
+        run: yamllint manifests helm
+
+      - name: Add Helm repositories
+        run: |
+          helm repo add open-telemetry \
+            https://open-telemetry.github.io/opentelemetry-helm-charts
+
+          helm repo add grafana \
+            https://grafana.github.io/helm-charts
+
+          helm repo add vm \
+            https://victoriametrics.github.io/helm-charts
+
+          helm repo add jaegertracing \
+            https://jaegertracing.github.io/helm-charts
+
+          helm repo add jetstack \
+            https://charts.jetstack.io
+
+          helm repo update
+
+      - name: Helm lint
+        run: |
+          helm lint jetstack/cert-manager \
+            --version "${CERT_MANAGER_VERSION}" \
+            --set crds.enabled=true
+
+          helm lint open-telemetry/opentelemetry-operator \
+            --version "${OTEL_OPERATOR_VERSION}" \
+            -f helm/opentelemetry-operator/values.yaml
+
+          helm lint vm/victoria-metrics-single \
+            --version "${VICTORIA_METRICS_VERSION}" \
+            -f helm/victoria-metrics/values.yaml
+
+          helm lint jaegertracing/jaeger \
+            --version "${JAEGER_VERSION}"
+
+          helm lint grafana/grafana \
+            --version "${GRAFANA_VERSION}" \
+            -f helm/grafana/values.yaml
+
+          helm lint open-telemetry/opentelemetry-demo \
+            --version "${OTEL_DEMO_VERSION}" \
+            -f helm/otel-demo/values.yaml
